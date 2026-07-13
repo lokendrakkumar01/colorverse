@@ -1,0 +1,310 @@
+/* ============================================================
+   ColorVerse - Global CSS
+   ============================================================ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   CSS Custom Properties
+   ============================================================ */
+:root {
+  --color-bg: #050511;
+  --color-surface: #0d0d1a;
+  --color-card: #121224;
+  --color-border: rgba(124, 58, 237, 0.2);
+  --color-text: #e2e8f0;
+  --color-text-muted: #64748b;
+  --color-brand: #7c3aed;
+  --color-accent: #4f46e5;
+  --scrollbar-width: 6px;
+}
+
+/* ============================================================
+   Base Styles
+   ============================================================ */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: var(--scrollbar-width);
+    height: var(--scrollbar-width);
+  }
+  ::-webkit-scrollbar-track {
+    background: #0d0d1a;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(124, 58, 237, 0.5);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(124, 58, 237, 0.8);
+  }
+
+  /* Selection */
+  ::selection {
+    background: rgba(124, 58, 237, 0.4);
+    color: white;
+  }
+
+  /* Focus visible */
+  :focus-visible {
+    outline: 2px solid rgba(124, 58, 237, 0.8);
+    outline-offset: 2px;
+  }
+}
+
+/* ============================================================
+   Component Classes
+   ============================================================ */
+@layer components {
+  /* Glass Card */
+  .glass-card {
+    @apply bg-dark-600/60 backdrop-blur-sm border border-brand-700/20 rounded-xl shadow-card;
+  }
+
+  /* Gradient Card */
+  .gradient-card {
+    @apply bg-gradient-to-br from-dark-600 to-dark-700 border border-brand-700/20 rounded-xl shadow-card;
+  }
+
+  /* Glowing Button */
+  .btn-primary {
+    @apply bg-brand-600 hover:bg-brand-700 text-white font-semibold px-6 py-3 rounded-xl
+           transition-all duration-200 hover:shadow-glow active:scale-95 disabled:opacity-50
+           disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-dark-400 hover:bg-dark-300 text-white font-semibold px-6 py-3 rounded-xl
+           border border-dark-300 transition-all duration-200 active:scale-95;
+  }
+
+  .btn-outline {
+    @apply border border-brand-600 text-brand-400 hover:bg-brand-600/10 font-semibold
+           px-6 py-3 rounded-xl transition-all duration-200;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl
+           transition-all duration-200 hover:shadow-glow-red active:scale-95;
+  }
+
+  .btn-success {
+    @apply bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-3 rounded-xl
+           transition-all duration-200 hover:shadow-glow-green active:scale-95;
+  }
+
+  /* Input Fields */
+  .input-field {
+    @apply w-full bg-dark-700 border border-dark-300 text-white placeholder-slate-500
+           rounded-xl px-4 py-3 focus:outline-none focus:border-brand-500 focus:ring-1
+           focus:ring-brand-500/50 transition-all duration-200;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium;
+  }
+  .badge-success { @apply badge bg-emerald-500/20 text-emerald-400; }
+  .badge-error   { @apply badge bg-red-500/20 text-red-400; }
+  .badge-warning { @apply badge bg-amber-500/20 text-amber-400; }
+  .badge-info    { @apply badge bg-blue-500/20 text-blue-400; }
+  .badge-brand   { @apply badge bg-brand-500/20 text-brand-400; }
+
+  /* Section Title */
+  .section-title {
+    @apply font-display font-bold text-2xl text-white;
+  }
+
+  /* Stat Card */
+  .stat-card {
+    @apply glass-card p-5 space-y-3;
+  }
+
+  /* Table */
+  .data-table {
+    @apply w-full text-sm text-slate-300;
+  }
+  .data-table thead th {
+    @apply bg-dark-700/80 text-slate-400 font-medium text-xs uppercase tracking-wider
+           px-4 py-3 text-left;
+  }
+  .data-table tbody tr {
+    @apply border-b border-dark-300/30 hover:bg-dark-600/40 transition-colors;
+  }
+  .data-table tbody td {
+    @apply px-4 py-3;
+  }
+
+  /* Sidebar Link */
+  .nav-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white
+           hover:bg-brand-600/20 transition-all duration-200 font-medium;
+  }
+  .nav-link.active {
+    @apply text-white bg-brand-600/30 border border-brand-600/30;
+  }
+
+  /* Game Color Card */
+  .color-card {
+    @apply relative cursor-pointer rounded-2xl p-5 border-2 transition-all duration-200
+           hover:scale-105 hover:-translate-y-1 select-none overflow-hidden;
+  }
+
+  /* Loading Skeleton */
+  .skeleton {
+    @apply animate-pulse bg-dark-400 rounded-lg;
+  }
+}
+
+/* ============================================================
+   Utility Classes
+   ============================================================ */
+@layer utilities {
+  /* Text gradient */
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-400 via-accent to-accent-cyan
+           bg-clip-text text-transparent;
+  }
+
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-amber-400 to-yellow-500 bg-clip-text text-transparent;
+  }
+
+  /* Glow effects */
+  .glow-brand { filter: drop-shadow(0 0 12px rgba(124,58,237,0.6)); }
+  .glow-text  { text-shadow: 0 0 20px rgba(124,58,237,0.8); }
+
+  /* Scrollbar hide */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Grid patterns */
+  .bg-grid {
+    background-image:
+      linear-gradient(rgba(124,58,237,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,58,237,0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Noise texture overlay */
+  .noise::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    opacity: 0.4;
+  }
+}
+
+/* ============================================================
+   Special Effects
+   ============================================================ */
+
+/* Animated gradient border */
+.border-gradient {
+  position: relative;
+  border-radius: 0.75rem;
+}
+.border-gradient::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5, #06b6d4, #7c3aed);
+  background-size: 400% 400%;
+  animation: gradientShift 4s ease infinite;
+  border-radius: inherit;
+  z-index: -1;
+}
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Particle glow */
+.particle-bg::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 80%, rgba(124,58,237,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(79,70,229,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(6,182,212,0.05) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Win animation overlay */
+.win-overlay {
+  animation: winPulse 0.5s ease-in-out 3;
+}
+@keyframes winPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+  50% { box-shadow: 0 0 40px 10px rgba(34,197,94,0.4); }
+}
+
+/* Timer countdown circle */
+.timer-circle {
+  transition: stroke-dashoffset 1s linear;
+}
+
+/* Shimmer loading */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.05) 50%,
+    rgba(255,255,255,0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ============================================================
+   Responsive Page Layout
+   ============================================================ */
+.page-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  padding: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .main-content {
+    padding: 2rem;
+  }
+}
+
+/* ============================================================
+   Razorpay Modal Fix
+   ============================================================ */
+.razorpay-backdrop {
+  z-index: 9999 !important;
+}
