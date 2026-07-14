@@ -1,5 +1,5 @@
 // ============================================================
-// Navbar Component - Top Bar
+// Navbar Component - Top Bar with Live Notifications Dropdown
 // ============================================================
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -7,36 +7,54 @@ import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import {
   Menu, Bell, Wifi, WifiOff, ChevronDown, LogOut,
-  User, Settings, Wallet, Zap
+  User, Settings, Wallet, Zap, CheckCircle2, ShieldAlert
 } from 'lucide-react'
 import api from '../services/api'
+import toast from 'react-hot-toast'
 
 const Navbar = ({ onMenuClick }) => {
   const { user, wallet, logout } = useAuth()
   const { connected } = useSocket()
   const navigate = useNavigate()
-  const [dropdownOpen, setDropdownOpen] = useState(false)
+  
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
+  const [notifDropdownOpen, setNotifDropdownOpen] = useState(false)
+  
+  const [notifs, setNotifs] = useState([])
   const [notifCount, setNotifCount] = useState(0)
-  const dropdownRef = useRef(null)
+
+  const profileRef = useRef(null)
+  const notifRef = useRef(null)
+
+  const fetchNotifCount = async () => {
+    try {
+      const data = await api.get('/users/notifications?limit=5')
+      setNotifs(data.notifications || [])
+      setNotifCount(data.unreadCount || 0)
+    } catch {}
+  }
 
   useEffect(() => {
-    // Fetch unread notification count
-    const fetchNotifCount = async () => {
-      try {
-        const data = await api.get('/users/notifications?limit=1')
-        setNotifCount(data.unreadCount || 0)
-      } catch {}
-    }
     fetchNotifCount()
     const interval = setInterval(fetchNotifCount, 30000)
     return () => clearInterval(interval)
   }, [])
 
-  // Close dropdown on outside click
+  // Refetch notifications on opening dropdown
+  useEffect(() => {
+    if (notifDropdownOpen) {
+      fetchNotifCount()
+    }
+  }, [notifDropdownOpen])
+
+  // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setDropdownOpen(false)
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileDropdownOpen(false)
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifDropdownOpen(false)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -46,6 +64,23 @@ const Navbar = ({ onMenuClick }) => {
   const handleLogout = () => {
     logout()
     navigate('/login')
+  }
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.patch('/users/notifications/read-all')
+      setNotifCount(0)
+      setNotifs(prev => prev.map(n => ({ ...n, isRead: true })))
+      toast.success('All notifications marked as read')
+    } catch {}
+  }
+
+  const handleReadSingle = async (id) => {
+    try {
+      await api.patch(`/users/notifications/${id}/read`)
+      setNotifs(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n))
+      setNotifCount(prev => Math.max(0, prev - 1))
+    } catch {}
   }
 
   return (
@@ -94,24 +129,72 @@ const Navbar = ({ onMenuClick }) => {
             ₹{wallet?.balance?.toFixed(2) || '0.00'}
           </Link>
 
-          {/* Notifications */}
-          <Link
-            to="/profile"
-            className="relative p-2 text-slate-400 hover:text-white hover:bg-dark-400/60 rounded-xl transition"
-          >
-            <Bell className="w-5 h-5" />
-            {notifCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-brand-600 text-white text-xs font-bold
-                w-4 h-4 rounded-full flex items-center justify-center">
-                {notifCount > 9 ? '9+' : notifCount}
-              </span>
+          {/* Notifications Dropdown Container */}
+          <div className="relative" ref={notifRef}>
+            <button
+              onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
+              className="relative p-2 text-slate-400 hover:text-white hover:bg-dark-400/60 rounded-xl transition"
+            >
+              <Bell className="w-5 h-5" />
+              {notifCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-brand-600 text-white text-xs font-bold
+                  w-4 h-4 rounded-full flex items-center justify-center">
+                  {notifCount > 9 ? '9+' : notifCount}
+                </span>
+              )}
+            </button>
+
+            {/* Notifications Menu */}
+            {notifDropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-dark-600 border border-dark-300/40
+                rounded-xl shadow-card p-4 space-y-3 animate-slide-down z-50">
+                <div className="flex justify-between items-center border-b border-dark-300/30 pb-2">
+                  <span className="text-white text-xs font-bold">Notifications</span>
+                  {notifCount > 0 && (
+                    <button onClick={handleMarkAllRead} className="text-brand-400 hover:text-brand-300 text-xxs font-bold">
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+
+                {/* Notification Items List */}
+                <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar">
+                  {notifs.length > 0 ? notifs.map(n => (
+                    <div
+                      key={n._id}
+                      onClick={() => handleReadSingle(n._id)}
+                      className={`p-2.5 rounded-lg border text-xxs leading-relaxed transition cursor-pointer flex items-start gap-2.5
+                        ${n.isRead
+                          ? 'bg-dark-700/40 border-transparent text-slate-400'
+                          : 'bg-brand-600/10 border-brand-500/20 text-slate-200'
+                        }`}
+                    >
+                      <div className="mt-0.5">
+                        {n.color === 'green' ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : n.color === 'red' ? (
+                          <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                        ) : (
+                          <Zap className="w-3.5 h-3.5 text-brand-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-0.5">
+                        <p className="font-bold text-white text-xxs">{n.title}</p>
+                        <p className="text-slate-400 text-xxs leading-relaxed">{n.message}</p>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-center py-6 text-slate-500 text-xxs">No new notifications</p>
+                  )}
+                </div>
+              </div>
             )}
-          </Link>
+          </div>
 
           {/* Profile Dropdown */}
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative" ref={profileRef}>
             <button
-              onClick={() => setDropdownOpen(!dropdownOpen)}
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-dark-400/60 transition"
             >
               <div className="w-8 h-8 rounded-full bg-brand-600/30 border border-brand-600/40
@@ -119,16 +202,16 @@ const Navbar = ({ onMenuClick }) => {
                 {user?.username?.[0]?.toUpperCase()}
               </div>
               <span className="hidden md:block text-white text-sm font-medium">{user?.username}</span>
-              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Menu */}
-            {dropdownOpen && (
+            {profileDropdownOpen && (
               <div className="absolute right-0 top-full mt-2 w-48 bg-dark-600 border border-dark-300/40
                 rounded-xl shadow-card py-1 animate-slide-down z-50">
                 <Link
                   to="/profile"
-                  onClick={() => setDropdownOpen(false)}
+                  onClick={() => setProfileDropdownOpen(false)}
                   className="flex items-center gap-3 px-4 py-2.5 text-slate-300 hover:text-white hover:bg-dark-400/60 text-sm"
                 >
                   <User className="w-4 h-4" />
@@ -136,7 +219,7 @@ const Navbar = ({ onMenuClick }) => {
                 </Link>
                 <Link
                   to="/wallet"
-                  onClick={() => setDropdownOpen(false)}
+                  onClick={() => setProfileDropdownOpen(false)}
                   className="flex items-center gap-3 px-4 py-2.5 text-slate-300 hover:text-white hover:bg-dark-400/60 text-sm"
                 >
                   <Wallet className="w-4 h-4" />

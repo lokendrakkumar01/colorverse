@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import api from '../services/api'
-import { MessageSquare, Search, Send, Image as ImageIcon, X, AlertCircle } from 'lucide-react'
+import { MessageSquare, Search, Send, Image as ImageIcon, X, AlertCircle, ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const Messages = () => {
@@ -130,7 +130,7 @@ const Messages = () => {
   return (
     <div className="glass-card flex h-[calc(100vh-140px)] overflow-hidden border border-brand-700/20 rounded-2xl animate-fade-in">
       {/* Left Sidebar: Conversations and search */}
-      <div className="w-80 border-r border-dark-300/30 flex flex-col bg-dark-800/40">
+      <div className={`border-r border-dark-300/30 flex flex-col bg-dark-800/40 transition-all duration-300 ${activePartner ? 'hidden md:flex w-80' : 'flex w-full md:w-80'}`}>
         {/* Search */}
         <div className="p-4 border-b border-dark-300/30 relative">
           <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -189,11 +189,17 @@ const Messages = () => {
       </div>
 
       {/* Right Side: Message Window */}
-      <div className="flex-1 flex flex-col justify-between bg-dark-900/30">
+      <div className={`flex-col justify-between bg-dark-900/30 transition-all duration-300 ${activePartner ? 'flex w-full' : 'hidden md:flex flex-1'}`}>
         {activePartner ? (
           <>
             {/* Active Partner Header */}
             <div className="p-4 border-b border-dark-300/30 flex items-center gap-3 bg-dark-800/20">
+              <button
+                onClick={() => setActivePartner(null)}
+                className="md:hidden p-1 bg-dark-500 hover:bg-dark-400 text-white rounded-lg transition mr-1"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
               <div className="w-9 h-9 rounded-full bg-brand-600/30 border border-brand-600/40 flex items-center justify-center text-brand-300 font-bold text-sm">
                 {activePartner[0].toUpperCase()}
               </div>

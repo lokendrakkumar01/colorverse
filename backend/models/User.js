@@ -35,7 +35,13 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       trim: true,
-      match: [/^[6-9]\d{9}$/, "Please provide a valid Indian phone number"],
+      validate: {
+        validator: function (v) {
+          if (!v || v.trim() === "") return true;
+          return /^[6-9]\d{9}$/.test(v);
+        },
+        message: "Please provide a valid Indian phone number",
+      },
     },
 
     // Profile
