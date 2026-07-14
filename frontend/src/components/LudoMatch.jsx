@@ -30,63 +30,70 @@ const LudoMatch = ({ gameName, onBack }) => {
     setLobbies(list)
   }, [gameName])
 
-  const handleCreateLobby = () => {
+  useEffect(() => {
+    const fetchLobbies = async () => {
+      try {
+        const data = await api.get('/lobby/active')
+        // Filter by current game type (Ludo vs Carrom)
+        const gameId = gameName.toLowerCase().includes('ludo') ? 'ludo' : 'carrom'
+        const list = (data.lobbies || []).filter(l => l.gameName.toLowerCase().includes(gameId))
+        setLobbies(list)
+      } catch (err) {
+        console.error('Error fetching lobbies:', err)
+      }
+    }
+    fetchLobbies()
+    const interval = setInterval(fetchLobbies, 5000) // Poll every 5s
+    return () => clearInterval(interval)
+  }, [gameName])
+
+  const handleCreateLobby = async () => {
     if (createAmount < 50) return toast.error('Minimum lobby entry is ₹50')
     if (createAmount > (wallet?.balance || 0)) return toast.error('Insufficient wallet balance')
 
-    // Create new lobby
-    const newLobby = {
-      id: String(Date.now()),
-      creator: user.username,
-      amount: createAmount,
-      status: 'open',
-      game: gameName.toLowerCase().includes('ludo') ? 'ludo' : 'carrom',
-    }
-
-    // Debit entry fee
-    debitEntryFee(createAmount)
-    
-    setLobbies(prev => [newLobby, ...prev])
-    setActiveLobby(newLobby)
-    toast.success(`Lobby created for ₹${createAmount}! Waiting for opponent...`)
-  }
-
-  const debitEntryFee = async (amount) => {
     try {
-      const data = await api.post('/game/instant-game', {
-        gameType: 'lobby_bet',
-        betAmount: amount,
-        won: false,
-        winAmount: 0,
-        detail: `Created Lobby for ${gameName}`,
+      const generatedId = String(Date.now())
+      const gameId = gameName.toLowerCase().includes('ludo') ? 'Ludo' : 'Carrom'
+      
+      const data = await api.post('/lobby/create', {
+        lobbyId: generatedId,
+        gameName: gameId,
+        amount: createAmount
       })
+
       updateWallet({ balance: data.walletBalance })
+      setActiveLobby(data.match)
+      toast.success(`Lobby created for ₹${createAmount}! Waiting for opponent...`)
     } catch (err) {
-      setActiveLobby(null)
-      toast.error(err.message || 'Escrow debit failed')
+      toast.error(err.message || 'Lobby creation failed')
     }
   }
 
-  const handleJoinLobby = (lobby) => {
+  const handleJoinLobby = async (lobby) => {
     if (lobby.amount > (wallet?.balance || 0)) return toast.error('Insufficient wallet balance to join')
 
-    debitEntryFee(lobby.amount)
-
-    const updatedLobby = {
-      ...lobby,
-      status: 'playing',
-      opponent: user.username,
-      roomCode: lobby.roomCode || '832948', // Default generated code
+    try {
+      const data = await api.post('/lobby/join', { lobbyId: lobby.lobbyId })
+      updateWallet({ balance: data.walletBalance })
+      setActiveLobby(data.match)
+      toast.success(`Joined lobby! Opponent: ${lobby.creator}`)
+    } catch (err) {
+      toast.error(err.message || 'Failed to join lobby')
     }
-
-    setActiveLobby(updatedLobby)
-    toast.success(`Joined lobby! Opponent: ${lobby.creator}`)
   }
 
-  const handleSetRoomCode = () => {
+  const handleSetRoomCode = async () => {
     if (!roomCode) return toast.error('Please enter room code')
-    setActiveLobby(prev => ({ ...prev, roomCode }))
-    toast.success('Room Code updated!')
+    try {
+      const data = await api.post('/lobby/set-code', {
+        lobbyId: activeLobby.lobbyId,
+        roomCode
+      })
+      setActiveLobby(data.match)
+      toast.success('Room Code updated!')
+    } catch (err) {
+      toast.error(err.message || 'Failed to set room code')
+    }
   }
 
   const copyRoomCode = () => {
@@ -101,10 +108,12 @@ const LudoMatch = ({ gameName, onBack }) => {
   const handleLose = async () => {
     if (!activeLobby) return
     try {
-      // Just record loss result
+      await api.post('/lobby/lose', { lobbyId: activeLobby.lobbyId })
       toast.success('Loss reported. Escrow released to opponent.')
       setActiveLobby(null)
-    } catch {}
+    } catch (err) {
+      toast.error(err.message || 'Failed to submit result')
+    }
   }
 
   const handleUploadWinScreenshot = async () => {
@@ -112,24 +121,16 @@ const LudoMatch = ({ gameName, onBack }) => {
     
     try {
       setUploading(true)
-      // Simulate API upload delay
-      await new Promise(resolve => setTimeout(resolve, 2000))
 
-      const prizeAmount = Math.round(activeLobby.amount * 1.8)
-
-      // Claim win reward (Lobby win pays 1.8x)
-      const data = await api.post('/game/instant-game', {
-        gameType: 'lobby_win',
-        betAmount: 0, // already debited on lobby creation/joining
-        won: true,
-        winAmount: prizeAmount,
-        detail: `Won lobby match in ${gameName}`,
+      // Submit victory claim
+      const data = await api.post('/lobby/claim-win', {
+        lobbyId: activeLobby.lobbyId,
+        screenshot // Base64 string
       })
 
-      updateWallet({ balance: data.walletBalance })
-      toast.success(`🏆 Victory Screenshot Submitted! Won ₹${prizeAmount}!`, { duration: 5000 })
       setActiveLobby(null)
       setScreenshot(null)
+      toast.success(`🏆 Victory claim submitted! Waiting for Admin verification...`, { duration: 5000 })
     } catch (err) {
       toast.error(err.message || 'Screenshot upload failed')
     } finally {

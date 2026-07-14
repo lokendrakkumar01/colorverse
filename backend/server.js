@@ -28,6 +28,7 @@ const withdrawalRoutes = require("./routes/withdrawalRoutes");
 const referralRoutes = require("./routes/referralRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const leaderboardRoutes = require("./routes/leaderboardRoutes");
+const lobbyRoutes = require("./routes/lobbyRoutes");
 
 // Import middleware
 const errorHandler = require("./middleware/errorHandler");
@@ -147,6 +148,7 @@ app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/referrals", referralRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
+app.use("/api/lobby", lobbyRoutes);
 
 // ============================================================
 // Health Check Route
