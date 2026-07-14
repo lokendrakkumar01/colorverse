@@ -2,6 +2,10 @@
 // Game Controller - ColorVerse Platform
 // ============================================================
 const Game = require("../models/Game");
+const Wallet = require("../models/Wallet");
+const Transaction = require("../models/Transaction");
+const User = require("../models/User");
+const Notification = require("../models/Notification");
 const { placeBet, getCurrentGame, GAME_CONFIG } = require("../services/gameEngine");
 
 // ============================================================
@@ -141,10 +145,115 @@ const getColors = (req, res) => {
   res.json({ success: true, colors: colorInfo, config: GAME_CONFIG });
 };
 
+// ============================================================
+// @route   POST /api/game/instant-game
+// @access  Private
+// ============================================================
+const handleInstantGameResult = async (req, res, next) => {
+  try {
+    const { gameType, betAmount, won, winAmount, detail } = req.body;
+    const userId = req.user._id;
+
+    if (!gameType || !betAmount) {
+      return res.status(400).json({ success: false, message: "Game type and bet amount are required" });
+    }
+
+    const wallet = await Wallet.findOne({ user: userId });
+    if (!wallet || wallet.balance < betAmount) {
+      return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
+    }
+
+    // 1. Debit the bet
+    const balanceBeforeBet = wallet.balance;
+    wallet.balance -= betAmount;
+    wallet.totalLost += betAmount;
+    await wallet.save();
+
+    // Record bet transaction
+    await Transaction.create({
+      user: userId,
+      type: "game_bet",
+      amount: betAmount,
+      balanceBefore: balanceBeforeBet,
+      balanceAfter: wallet.balance,
+      status: "completed",
+      description: `Bet ₹${betAmount} on ${gameType.toUpperCase()} - ${detail}`,
+    });
+
+    // 2. If won, credit the win
+    let finalBalance = wallet.balance;
+    if (won && winAmount > 0) {
+      const balanceBeforeWin = wallet.balance;
+      wallet.balance += winAmount;
+      wallet.totalWon += winAmount;
+      await wallet.save();
+      finalBalance = wallet.balance;
+
+      // Record win transaction
+      await Transaction.create({
+        user: userId,
+        type: "game_win",
+        amount: winAmount,
+        balanceBefore: balanceBeforeWin,
+        balanceAfter: finalBalance,
+        status: "completed",
+        description: `Won ₹${winAmount} on ${gameType.toUpperCase()} - ${detail}`,
+      });
+
+      // Update User stats
+      await User.findByIdAndUpdate(userId, {
+        $inc: {
+          totalGames: 1,
+          totalWins: 1,
+          totalBetAmount: betAmount,
+          totalWinAmount: winAmount,
+        },
+      });
+
+      // Create Win Notification
+      await Notification.create({
+        user: userId,
+        title: `🏆 Won ₹${winAmount} on ${gameType.toUpperCase()}!`,
+        message: `Congratulations! You won ₹${winAmount} playing ${gameType.toUpperCase()}`,
+        type: "game_result",
+        color: "green",
+      });
+    } else {
+      // Update User stats for loss
+      await User.findByIdAndUpdate(userId, {
+        $inc: {
+          totalGames: 1,
+          totalLosses: 1,
+          totalBetAmount: betAmount,
+          totalLossAmount: betAmount,
+        },
+      });
+
+      // Create Loss Notification
+      await Notification.create({
+        user: userId,
+        title: `Better luck next time in ${gameType.toUpperCase()}`,
+        message: `You lost ₹${betAmount} playing ${gameType.toUpperCase()}`,
+        type: "game_result",
+        color: "red",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: won ? `Won ₹${winAmount}` : `Lost ₹${betAmount}`,
+      walletBalance: finalBalance,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getCurrentRound,
   placeBetRoute,
   getGameHistory,
   getRecentRounds,
   getColors,
+  handleInstantGameResult,
 };
