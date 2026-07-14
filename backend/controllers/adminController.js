@@ -8,6 +8,7 @@ const Deposit = require("../models/Deposit");
 const Withdrawal = require("../models/Withdrawal");
 const Transaction = require("../models/Transaction");
 const Notification = require("../models/Notification");
+const SystemSetting = require("../models/SystemSetting");
 const {
   sendDepositConfirmedEmail,
   sendWithdrawalApprovedEmail,
@@ -533,6 +534,45 @@ const getAnalytics = async (req, res, next) => {
   }
 };
 
+// ============================================================
+// @route   GET /api/admin/settings
+// @access  Admin
+// ============================================================
+const getSettings = async (req, res, next) => {
+  try {
+    let modeSetting = await SystemSetting.findOne({ key: "gameMode" });
+    if (!modeSetting) {
+      modeSetting = await SystemSetting.create({ key: "gameMode", value: "paid" });
+    }
+    res.json({ success: true, settings: { gameMode: modeSetting.value } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// @route   POST /api/admin/settings
+// @access  Admin
+// ============================================================
+const updateSettings = async (req, res, next) => {
+  try {
+    const { gameMode } = req.body;
+    if (!gameMode || !["free", "paid"].includes(gameMode)) {
+      return res.status(400).json({ success: false, message: "Invalid game mode. Must be free or paid" });
+    }
+
+    let modeSetting = await SystemSetting.findOneAndUpdate(
+      { key: "gameMode" },
+      { value: gameMode },
+      { new: true, upsert: true }
+    );
+
+    res.json({ success: true, settings: { gameMode: modeSetting.value }, message: "Settings updated successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDashboard,
   getUsers,
@@ -545,4 +585,6 @@ module.exports = {
   rejectWithdrawal,
   getGames,
   getAnalytics,
+  getSettings,
+  updateSettings,
 };

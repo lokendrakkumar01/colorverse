@@ -12,6 +12,26 @@ router.get("/profile", protect, async (req, res) => {
   res.json({ success: true, user: req.user });
 });
 
+// Search users by query
+router.get("/search", protect, async (req, res, next) => {
+  try {
+    const query = req.query.q || "";
+    if (query.length < 2) {
+      return res.status(400).json({ success: false, message: "Query must be at least 2 characters" });
+    }
+
+    const users = await User.find({
+      username: { $regex: query, $options: "i" }
+    })
+      .limit(10)
+      .select("username email");
+
+    res.json({ success: true, users });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Update profile
 router.put("/profile", protect, async (req, res, next) => {
   try {

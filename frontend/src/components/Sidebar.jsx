@@ -5,13 +5,14 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
   LayoutDashboard, Gamepad2, Wallet, Trophy, Users,
-  User, LogOut, X, Zap, Settings
+  User, LogOut, X, Zap, Settings, MessageSquare
 } from 'lucide-react'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/game', label: 'Play Game', icon: Gamepad2, highlight: true },
   { to: '/wallet', label: 'Wallet', icon: Wallet },
+  { to: '/messages', label: 'Messages', icon: MessageSquare },
   { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { to: '/referrals', label: 'Referrals', icon: Users },
   { to: '/profile', label: 'Profile', icon: User },

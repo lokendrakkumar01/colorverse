@@ -19,6 +19,7 @@ import Wallet from './pages/Wallet'
 import Leaderboard from './pages/Leaderboard'
 import Referral from './pages/Referral'
 import Profile from './pages/Profile'
+import Messages from './pages/Messages'
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -86,6 +87,7 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/game" element={<Game />} />
                 <Route path="/wallet" element={<Wallet />} />
+                <Route path="/messages" element={<Messages />} />
                 <Route path="/referrals" element={<Referral />} />
                 <Route path="/profile" element={<Profile />} />
               </Route>

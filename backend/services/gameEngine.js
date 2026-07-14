@@ -6,6 +6,7 @@ const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
+const SystemSetting = require("../models/SystemSetting");
 
 const { GAME_COLORS } = require("../models/Game");
 
@@ -321,22 +322,26 @@ const placeBet = async (userId, color, amount) => {
     throw new Error("You have already placed a bet in this round");
   }
 
-  // Check wallet balance and free trial status
+  // Check wallet balance, free trial, and global free play status
   const user = await User.findById(userId);
   const isFreeTrial = user && (Date.now() - new Date(user.createdAt).getTime()) < 10 * 60 * 1000;
+  
+  const modeSetting = await SystemSetting.findOne({ key: "gameMode" });
+  const isGlobalFree = modeSetting && modeSetting.value === "free";
+  const isFree = isFreeTrial || isGlobalFree;
 
   const wallet = await Wallet.findOne({ user: userId });
   if (!wallet) {
     throw new Error("Wallet not found");
   }
 
-  if (!isFreeTrial && wallet.balance < amount) {
+  if (!isFree && wallet.balance < amount) {
     throw new Error("Insufficient wallet balance");
   }
 
-  // Debit wallet (skip if free trial)
+  // Debit wallet (skip if free play)
   const balanceBefore = wallet.balance;
-  if (!isFreeTrial) {
+  if (!isFree) {
     wallet.balance -= amount;
     wallet.totalLost += amount;
     await wallet.save();
@@ -346,12 +351,12 @@ const placeBet = async (userId, color, amount) => {
   await Transaction.create({
     user: userId,
     type: "game_bet",
-    amount: isFreeTrial ? 0 : amount,
+    amount: isFree ? 0 : amount,
     balanceBefore,
     balanceAfter: wallet.balance,
     status: "completed",
     gameId: currentGame._id,
-    description: `${isFreeTrial ? "[FREE TRIAL] " : ""}Bet ₹${amount} on ${color} - Round #${currentGame.roundNumber}`,
+    description: `${isGlobalFree ? "[GLOBAL FREE PLAY] " : isFreeTrial ? "[FREE TRIAL] " : ""}Bet ₹${amount} on ${color} - Round #${currentGame.roundNumber}`,
   });
 
   // Update user stats

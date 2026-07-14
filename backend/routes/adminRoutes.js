@@ -15,6 +15,8 @@ const {
   rejectWithdrawal,
   getGames,
   getAnalytics,
+  getSettings,
+  updateSettings,
 } = require("../controllers/adminController");
 
 // All admin routes require authentication + admin role
@@ -40,5 +42,9 @@ router.patch("/withdrawals/:id/reject", rejectWithdrawal);
 
 // Game management
 router.get("/games", getGames);
+
+// System Settings
+router.get("/settings", getSettings);
+router.post("/settings", updateSettings);
 
 module.exports = router;

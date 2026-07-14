@@ -3,6 +3,7 @@
 // ============================================================
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const ChatMessage = require("../models/ChatMessage");
 const { initGameEngine, getCurrentGame } = require("./gameEngine");
 
 // Keep last 50 chat messages in memory
@@ -76,6 +77,76 @@ const initializeSocket = (io) => {
 
       // Broadcast to everyone
       io.emit("chat:message", message);
+    });
+
+    // ============================================================
+    // Private Direct Messaging Events
+    // ============================================================
+    socket.on("chat:get_private_history", async ({ receiverUsername }) => {
+      if (!socket.user) return;
+      try {
+        const receiver = await User.findOne({ username: receiverUsername });
+        if (!receiver) return;
+
+        const messages = await ChatMessage.find({
+          $or: [
+            { sender: socket.user._id, receiver: receiver._id },
+            { sender: receiver._id, receiver: socket.user._id }
+          ]
+        })
+          .sort({ createdAt: 1 })
+          .limit(50);
+
+        socket.emit("chat:private_history", {
+          receiverUsername,
+          messages: messages.map(m => ({
+            id: m._id,
+            sender: m.sender.toString() === socket.user._id.toString() ? socket.user.username : receiverUsername,
+            text: m.text,
+            image: m.image,
+            time: m.createdAt
+          }))
+        });
+      } catch (err) {
+        console.error("Error getting chat history:", err);
+      }
+    });
+
+    socket.on("chat:send_private_message", async ({ receiverUsername, text, image }) => {
+      if (!socket.user) return;
+      try {
+        const receiver = await User.findOne({ username: receiverUsername });
+        if (!receiver) return;
+
+        const newMsg = await ChatMessage.create({
+          sender: socket.user._id,
+          receiver: receiver._id,
+          text: text || "",
+          image: image || "",
+        });
+
+        const formattedMsg = {
+          id: newMsg._id,
+          sender: socket.user.username,
+          text: newMsg.text,
+          image: newMsg.image,
+          time: newMsg.createdAt
+        };
+
+        // Emit to sender room
+        io.to(`user:${socket.user._id}`).emit("chat:private_receive", {
+          chatPartner: receiverUsername,
+          message: formattedMsg
+        });
+
+        // Emit to receiver room
+        io.to(`user:${receiver._id}`).emit("chat:private_receive", {
+          chatPartner: socket.user.username,
+          message: formattedMsg
+        });
+      } catch (err) {
+        console.error("Error sending private message:", err);
+      }
     });
 
     // ============================================================
