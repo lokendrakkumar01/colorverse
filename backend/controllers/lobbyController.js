@@ -6,6 +6,7 @@ const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
+const SystemSetting = require("../models/SystemSetting");
 
 // 1. Create a Lobby
 const createLobby = async (req, res, next) => {
@@ -165,7 +166,13 @@ const confirmDefeat = async (req, res, next) => {
       return res.status(404).json({ success: false, message: "Winner not found" });
     }
 
-    const prize = Math.round(match.amount * 1.8);
+    let commissionSetting = await SystemSetting.findOne({ key: "commissionFee" });
+    if (!commissionSetting) {
+      commissionSetting = await SystemSetting.create({ key: "commissionFee", value: 10 });
+    }
+    const commissionRate = Number(commissionSetting.value) / 100;
+    const prize = Math.round((match.amount * 2) * (1 - commissionRate));
+
     const wallet = await Wallet.findOne({ user: winnerUser._id });
 
     if (wallet) {
@@ -232,7 +239,13 @@ const resolveLobby = async (req, res, next) => {
       const winnerUser = await User.findOne({ username: winnerName });
 
       if (winnerUser) {
-        const prize = Math.round(match.amount * 1.8);
+        let commissionSetting = await SystemSetting.findOne({ key: "commissionFee" });
+        if (!commissionSetting) {
+          commissionSetting = await SystemSetting.create({ key: "commissionFee", value: 10 });
+        }
+        const commissionRate = Number(commissionSetting.value) / 100;
+        const prize = Math.round((match.amount * 2) * (1 - commissionRate));
+
         const wallet = await Wallet.findOne({ user: winnerUser._id });
 
         if (wallet) {

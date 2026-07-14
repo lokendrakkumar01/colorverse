@@ -544,7 +544,19 @@ const getSettings = async (req, res, next) => {
     if (!modeSetting) {
       modeSetting = await SystemSetting.create({ key: "gameMode", value: "paid" });
     }
-    res.json({ success: true, settings: { gameMode: modeSetting.value } });
+
+    let commissionSetting = await SystemSetting.findOne({ key: "commissionFee" });
+    if (!commissionSetting) {
+      commissionSetting = await SystemSetting.create({ key: "commissionFee", value: 10 });
+    }
+
+    res.json({
+      success: true,
+      settings: {
+        gameMode: modeSetting.value,
+        commissionFee: Number(commissionSetting.value),
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -556,18 +568,33 @@ const getSettings = async (req, res, next) => {
 // ============================================================
 const updateSettings = async (req, res, next) => {
   try {
-    const { gameMode } = req.body;
-    if (!gameMode || !["free", "paid"].includes(gameMode)) {
-      return res.status(400).json({ success: false, message: "Invalid game mode. Must be free or paid" });
+    const { gameMode, commissionFee } = req.body;
+
+    const updates = {};
+
+    if (gameMode && ["free", "paid"].includes(gameMode)) {
+      const modeSetting = await SystemSetting.findOneAndUpdate(
+        { key: "gameMode" },
+        { value: gameMode },
+        { new: true, upsert: true }
+      );
+      updates.gameMode = modeSetting.value;
     }
 
-    let modeSetting = await SystemSetting.findOneAndUpdate(
-      { key: "gameMode" },
-      { value: gameMode },
-      { new: true, upsert: true }
-    );
+    if (commissionFee !== undefined) {
+      const feeNum = Number(commissionFee);
+      if (feeNum < 0 || feeNum > 50) {
+        return res.status(400).json({ success: false, message: "Commission fee must be between 0% and 50%" });
+      }
+      const feeSetting = await SystemSetting.findOneAndUpdate(
+        { key: "commissionFee" },
+        { value: feeNum },
+        { new: true, upsert: true }
+      );
+      updates.commissionFee = Number(feeSetting.value);
+    }
 
-    res.json({ success: true, settings: { gameMode: modeSetting.value }, message: "Settings updated successfully" });
+    res.json({ success: true, settings: updates, message: "Settings updated successfully" });
   } catch (error) {
     next(error);
   }

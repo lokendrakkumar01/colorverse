@@ -1,9 +1,9 @@
 // ============================================================
-// Admin Dashboard Page - System Settings Toggle
+// Admin Dashboard Page - System Settings & Finance Toggle
 // ============================================================
 import { useState, useEffect } from 'react'
 import api from '../../services/api'
-import { Users, Gamepad2, CreditCard, ArrowDownCircle, TrendingUp, DollarSign, Shield, Activity, Sparkles, CheckCircle2 } from 'lucide-react'
+import { Users, Gamepad2, CreditCard, ArrowDownCircle, TrendingUp, DollarSign, Shield, Activity, Sparkles, Settings, Percent } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const StatCard = ({ label, value, sub, icon: Icon, color }) => (
@@ -23,7 +23,10 @@ const AdminDashboard = () => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [gameMode, setGameMode] = useState('paid')
+  const [commissionFee, setCommissionFee] = useState(10)
+  
   const [updatingMode, setUpdatingMode] = useState(false)
+  const [updatingFee, setUpdatingFee] = useState(false)
 
   const fetchDashboardData = async () => {
     try {
@@ -33,6 +36,7 @@ const AdminDashboard = () => {
       ])
       setData(dbRes)
       setGameMode(settingsRes.settings?.gameMode || 'paid')
+      setCommissionFee(settingsRes.settings?.commissionFee !== undefined ? settingsRes.settings.commissionFee : 10)
     } catch {
       toast.error('Failed to load dashboard data')
     } finally {
@@ -55,6 +59,22 @@ const AdminDashboard = () => {
       toast.error(err.message || 'Failed to update system mode')
     } finally {
       setUpdatingMode(false)
+    }
+  }
+
+  const handleUpdateFee = async () => {
+    if (commissionFee < 0 || commissionFee > 50) {
+      return toast.error('Commission fee must be between 0% and 50%')
+    }
+    try {
+      setUpdatingFee(true)
+      const res = await api.post('/admin/settings', { commissionFee })
+      setCommissionFee(res.settings?.commissionFee !== undefined ? res.settings.commissionFee : commissionFee)
+      toast.success(`Multiplayer lobby commission fee updated to ${commissionFee}% successfully!`)
+    } catch (err) {
+      toast.error(err.message || 'Failed to update commission fee')
+    } finally {
+      setUpdatingFee(false)
     }
   }
 
@@ -85,33 +105,73 @@ const AdminDashboard = () => {
       </div>
 
       {/* System Configurations Section */}
-      <div className="glass-card p-6 bg-gradient-to-r from-dark-800 to-brand-950/20 border border-brand-500/20 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="space-y-2">
-          <h2 className="font-bold text-white text-lg flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-brand-400" />
-            Global Game Pricing Mode
-          </h2>
-          <p className="text-slate-400 text-sm max-w-xl">
-            Toggle the site play style. Under <strong>Free Mode</strong>, all betting games are free for all users (bets won't deduct from their wallet balance). Switch to <strong>Paid Mode</strong> for normal currency operations.
-          </p>
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Game Mode Configuration */}
+        <div className="glass-card p-6 bg-gradient-to-br from-dark-800 to-brand-950/20 border border-brand-500/20 rounded-2xl flex flex-col justify-between gap-4">
+          <div className="space-y-2">
+            <h2 className="font-bold text-white text-md flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-brand-400" />
+              Global Game Pricing Mode
+            </h2>
+            <p className="text-slate-400 text-xs leading-relaxed">
+              Toggle play style site-wide. Under <strong>Free Mode</strong>, all betting games are free for all users. Paid mode operates with real currency.
+            </p>
+          </div>
+          <button
+            onClick={handleToggleMode}
+            disabled={updatingMode}
+            className={`w-full py-3 rounded-xl font-display font-black text-xs whitespace-nowrap transition-all shadow-glow
+              ${gameMode === 'free'
+                ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-glow-emerald'
+                : 'bg-brand-600 hover:bg-brand-500 text-white'
+              }`}
+          >
+            {updatingMode ? (
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+            ) : gameMode === 'free' ? (
+              '🟢 FREE PLAY ACTIVE (Click to End)'
+            ) : (
+              '🔴 PAID MODE ACTIVE (Click to make Free)'
+            )}
+          </button>
         </div>
-        <button
-          onClick={handleToggleMode}
-          disabled={updatingMode}
-          className={`px-6 py-3.5 rounded-xl font-display font-black text-sm whitespace-nowrap transition-all shadow-glow
-            ${gameMode === 'free'
-              ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-glow-emerald'
-              : 'bg-brand-600 hover:bg-brand-500 text-white'
-            }`}
-        >
-          {updatingMode ? (
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
-          ) : gameMode === 'free' ? (
-            '🟢 FREE PLAY ACTIVE (Click to End)'
-          ) : (
-            '🔴 PAID MODE ACTIVE (Click to make Free)'
-          )}
-        </button>
+
+        {/* Commission Fee Configuration */}
+        <div className="glass-card p-6 bg-gradient-to-br from-dark-800 to-accent/20 border border-brand-500/20 rounded-2xl flex flex-col justify-between gap-4">
+          <div className="space-y-2">
+            <h2 className="font-bold text-white text-md flex items-center gap-2">
+              <Settings className="w-5 h-5 text-brand-400" />
+              Lobby Match Commission Rate
+            </h2>
+            <p className="text-slate-400 text-xs leading-relaxed">
+              Configure the cut kept by your platform from 1v1 challenges (like Ludo / Carrom). Default is <strong>10%</strong>. Max allowed is 50%.
+            </p>
+          </div>
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-1">
+              <input
+                type="number"
+                value={commissionFee}
+                onChange={(e) => setCommissionFee(Math.max(0, Math.min(50, Number(e.target.value))))}
+                className="input-field pl-9 pr-3 py-2 text-xs font-bold text-center"
+                min={0}
+                max={50}
+              />
+              <Percent className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            </div>
+            <button
+              onClick={handleUpdateFee}
+              disabled={updatingFee}
+              className="btn-primary px-4 py-2.5 text-xs font-bold whitespace-nowrap"
+            >
+              {updatingFee ? (
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+              ) : (
+                'Save Settings'
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Recent Data */}
