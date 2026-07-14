@@ -44,14 +44,14 @@ const LudoMatch = ({ gameName, onBack }) => {
     }
 
     // Debit entry fee
-    deditEntryFee(createAmount)
+    debitEntryFee(createAmount)
     
     setLobbies(prev => [newLobby, ...prev])
     setActiveLobby(newLobby)
     toast.success(`Lobby created for ₹${createAmount}! Waiting for opponent...`)
   }
 
-  const deditEntryFee = async (amount) => {
+  const debitEntryFee = async (amount) => {
     try {
       const data = await api.post('/game/instant-game', {
         gameType: 'lobby_bet',
@@ -70,7 +70,7 @@ const LudoMatch = ({ gameName, onBack }) => {
   const handleJoinLobby = (lobby) => {
     if (lobby.amount > (wallet?.balance || 0)) return toast.error('Insufficient wallet balance to join')
 
-    deditEntryFee(lobby.amount)
+    debitEntryFee(lobby.amount)
 
     const updatedLobby = {
       ...lobby,

@@ -48,7 +48,7 @@ const CrashRocket = ({ onBack }) => {
     setGameState('running')
 
     // Debit bet first
-    deditBetAmount()
+    debitBetAmount()
 
     const startTime = Date.now()
     timerRef.current = setInterval(() => {
@@ -68,7 +68,7 @@ const CrashRocket = ({ onBack }) => {
     }, 100)
   }
 
-  const deditBetAmount = async () => {
+  const debitBetAmount = async () => {
     try {
       const data = await api.post('/game/instant-game', {
         gameType: 'crash',

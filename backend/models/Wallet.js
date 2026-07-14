@@ -15,7 +15,7 @@ const walletSchema = new mongoose.Schema(
     // Balances
     balance: {
       type: Number,
-      default: 0,
+      default: 1000,
       min: [0, "Balance cannot be negative"],
     },
     bonusBalance: {
