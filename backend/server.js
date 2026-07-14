@@ -44,15 +44,17 @@ const server = http.createServer(app);
 // ============================================================
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-      "http://127.0.0.1:5173",
-      "http://127.0.0.1:5174",
-      "http://127.0.0.1:5175",
-      process.env.CLIENT_URL
-    ].filter(Boolean),
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      const allowed =
+        origin.startsWith("http://localhost:") ||
+        origin.startsWith("http://127.0.0.1:") ||
+        origin.endsWith(".onrender.com") ||
+        origin.endsWith(".vercel.app") ||
+        origin === process.env.CLIENT_URL;
+      if (allowed) return callback(null, true);
+      callback(new Error("Not allowed by CORS"));
+    },
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -77,7 +79,7 @@ app.use(
 // Rate limiting - general API
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: 200,
   message: {
     success: false,
     message: "Too many requests from this IP, please try again after 15 minutes",
@@ -89,7 +91,7 @@ const limiter = rateLimit({
 // Stricter rate limit for auth routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 50,
   message: {
     success: false,
     message: "Too many authentication attempts, please try again after 15 minutes",
@@ -102,24 +104,17 @@ app.use("/api/auth/", authLimiter);
 // ============================================================
 // CORS Configuration
 // ============================================================
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "http://localhost:5175",
-  "http://localhost:3000",
-].filter(Boolean);
-
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
-      
-      const isLocalhost = origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
-      if (isLocalhost || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      
+      const isAllowed =
+        origin.startsWith("http://localhost:") ||
+        origin.startsWith("http://127.0.0.1:") ||
+        origin.endsWith(".onrender.com") ||
+        origin.endsWith(".vercel.app") ||
+        origin === process.env.CLIENT_URL;
+      if (isAllowed) return callback(null, true);
       callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
