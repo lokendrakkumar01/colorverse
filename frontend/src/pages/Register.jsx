@@ -23,6 +23,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState(1)
+  const [warmingUp, setWarmingUp] = useState(false)
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -58,8 +59,13 @@ const Register = () => {
       return toast.error('Password must be at least 8 characters')
     }
 
+    setLoading(true)
+    setWarmingUp(false)
+
+    // Show "warming up" message after 5 seconds
+    const warmTimer = setTimeout(() => setWarmingUp(true), 5000)
+
     try {
-      setLoading(true)
       await register({
         username: formData.username,
         email: formData.email,
@@ -67,11 +73,14 @@ const Register = () => {
         phone: formData.phone,
         referralCode: formData.referralCode,
       })
+      clearTimeout(warmTimer)
       navigate('/dashboard')
     } catch (err) {
-      toast.error(err.message || 'Registration failed')
+      clearTimeout(warmTimer)
+      toast.error(err.message || 'Registration failed. Please try again.')
     } finally {
       setLoading(false)
+      setWarmingUp(false)
     }
   }
 
@@ -246,7 +255,14 @@ const Register = () => {
               className="btn-primary w-full flex items-center justify-center gap-2 py-3.5"
             >
               {loading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  {warmingUp && (
+                    <span className="text-xs text-white/70 mt-1">
+                      ⏳ Server warming up, please wait...
+                    </span>
+                  )}
+                </div>
               ) : (
                 <>Create Account <ArrowRight className="w-4 h-4" /></>
               )}
