@@ -5,6 +5,9 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { initGameEngine, getCurrentGame } = require("./gameEngine");
 
+// Keep last 50 chat messages in memory
+const chatHistory = [];
+
 const initializeSocket = (io) => {
   // Middleware: Authenticate socket connections
   io.use(async (socket, next) => {
@@ -40,6 +43,9 @@ const initializeSocket = (io) => {
       socket.emit("game:state", currentGame);
     }
 
+    // Send chat history to new connection
+    socket.emit("chat:history", chatHistory);
+
     // ============================================================
     // Game Events
     // ============================================================
@@ -48,6 +54,28 @@ const initializeSocket = (io) => {
     socket.on("game:get_state", () => {
       const gameState = getCurrentGame();
       socket.emit("game:state", gameState);
+    });
+
+    // ============================================================
+    // Chat Events
+    // ============================================================
+    socket.on("chat:message", (text) => {
+      if (!socket.user) return; // Must be authenticated to chat
+      
+      const message = {
+        id: String(Date.now()) + Math.random().toString(36).substring(2, 5),
+        username: socket.user.username,
+        text: text.slice(0, 300), // Max 300 chars
+        time: new Date().toISOString(),
+        avatar: socket.user.avatar || "",
+      };
+
+      // Add to history
+      chatHistory.push(message);
+      if (chatHistory.length > 50) chatHistory.shift();
+
+      // Broadcast to everyone
+      io.emit("chat:message", message);
     });
 
     // ============================================================

@@ -5,9 +5,12 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Navbar from '../components/Navbar'
+import WorldChat from '../components/WorldChat'
+import { MessageSquare } from 'lucide-react'
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
 
   return (
     <div className="flex min-h-screen bg-dark-900 relative">
@@ -28,6 +31,17 @@ const DashboardLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Floating Chat Button */}
+      <button
+        onClick={() => setChatOpen(!chatOpen)}
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center shadow-glow hover:shadow-glow-lg transition-all scale-100 hover:scale-105 active:scale-95 z-40 animate-bounce-slow"
+      >
+        <MessageSquare className="w-6 h-6" />
+      </button>
+
+      {/* World Chat Panel */}
+      <WorldChat isOpen={chatOpen} onClose={() => setChatOpen(false)} />
     </div>
   )
 }

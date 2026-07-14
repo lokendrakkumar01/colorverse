@@ -321,28 +321,37 @@ const placeBet = async (userId, color, amount) => {
     throw new Error("You have already placed a bet in this round");
   }
 
-  // Check wallet balance
+  // Check wallet balance and free trial status
+  const user = await User.findById(userId);
+  const isFreeTrial = user && (Date.now() - new Date(user.createdAt).getTime()) < 10 * 60 * 1000;
+
   const wallet = await Wallet.findOne({ user: userId });
-  if (!wallet || wallet.balance < amount) {
+  if (!wallet) {
+    throw new Error("Wallet not found");
+  }
+
+  if (!isFreeTrial && wallet.balance < amount) {
     throw new Error("Insufficient wallet balance");
   }
 
-  // Debit wallet
+  // Debit wallet (skip if free trial)
   const balanceBefore = wallet.balance;
-  wallet.balance -= amount;
-  wallet.totalLost += amount;
-  await wallet.save();
+  if (!isFreeTrial) {
+    wallet.balance -= amount;
+    wallet.totalLost += amount;
+    await wallet.save();
+  }
 
   // Record bet transaction
   await Transaction.create({
     user: userId,
     type: "game_bet",
-    amount,
+    amount: isFreeTrial ? 0 : amount,
     balanceBefore,
     balanceAfter: wallet.balance,
     status: "completed",
     gameId: currentGame._id,
-    description: `Bet ₹${amount} on ${color} - Round #${currentGame.roundNumber}`,
+    description: `${isFreeTrial ? "[FREE TRIAL] " : ""}Bet ₹${amount} on ${color} - Round #${currentGame.roundNumber}`,
   });
 
   // Update user stats

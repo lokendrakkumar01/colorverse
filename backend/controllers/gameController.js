@@ -158,26 +158,34 @@ const handleInstantGameResult = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Game type and bet amount are required" });
     }
 
+    const isFreeTrial = (Date.now() - new Date(req.user.createdAt).getTime()) < 10 * 60 * 1000;
+
     const wallet = await Wallet.findOne({ user: userId });
-    if (!wallet || wallet.balance < betAmount) {
+    if (!wallet) {
+      return res.status(404).json({ success: false, message: "Wallet not found" });
+    }
+
+    if (!isFreeTrial && wallet.balance < betAmount) {
       return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
     }
 
-    // 1. Debit the bet
+    // 1. Debit the bet (skip if free trial)
     const balanceBeforeBet = wallet.balance;
-    wallet.balance -= betAmount;
-    wallet.totalLost += betAmount;
-    await wallet.save();
+    if (!isFreeTrial) {
+      wallet.balance -= betAmount;
+      wallet.totalLost += betAmount;
+      await wallet.save();
+    }
 
     // Record bet transaction
     await Transaction.create({
       user: userId,
       type: "game_bet",
-      amount: betAmount,
+      amount: isFreeTrial ? 0 : betAmount,
       balanceBefore: balanceBeforeBet,
       balanceAfter: wallet.balance,
       status: "completed",
-      description: `Bet ₹${betAmount} on ${gameType.toUpperCase()} - ${detail}`,
+      description: `${isFreeTrial ? "[FREE TRIAL] " : ""}Bet ₹${betAmount} on ${gameType.toUpperCase()} - ${detail}`,
     });
 
     // 2. If won, credit the win
