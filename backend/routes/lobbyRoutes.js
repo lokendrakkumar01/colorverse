@@ -3,7 +3,8 @@
 // ============================================================
 const express = require("express");
 const router = express.Router();
-const { protect, admin } = require("../middleware/auth");
+const { protect } = require("../middleware/auth");
+const { isAdmin } = require("../middleware/adminAuth");
 const {
   createLobby,
   getActiveLobbies,
@@ -24,7 +25,7 @@ router.post("/claim-win", protect, claimVictory);
 router.post("/lose", protect, confirmDefeat);
 
 // Admin Routes
-router.get("/admin/pending", protect, admin, getPendingLobbies);
-router.post("/admin/resolve/:id", protect, admin, resolveLobby);
+router.get("/admin/pending", protect, isAdmin, getPendingLobbies);
+router.post("/admin/resolve/:id", protect, isAdmin, resolveLobby);
 
 module.exports = router;
