@@ -1,6 +1,6 @@
 services:
   # ============================================================
-  # Backend API Service
+  # Backend API Service (Web Service)
   # ============================================================
   - type: web
     name: colorverse-backend
@@ -20,7 +20,7 @@ services:
       - key: JWT_EXPIRE
         value: 7d
       - key: CLIENT_URL
-        sync: false  # Set to your frontend URL in Render dashboard
+        value: https://colorverse-4mkw.onrender.com
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET
@@ -38,3 +38,22 @@ services:
       - key: UPI_ID
         value: 9568804305@ybl
     healthCheckPath: /api/health
+
+  # ============================================================
+  # Frontend Static Site
+  # ============================================================
+  - type: web
+    name: colorverse-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://colorverse2.onrender.com/api
+      - key: VITE_SOCKET_URL
+        value: https://colorverse2.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -47,28 +47,54 @@ export const AuthProvider = ({ children }) => {
   // Register
   // ============================================================
   const register = async (formData) => {
-    const data = await api.post('/auth/register', formData)
-    const { token: newToken, user: newUser, wallet: newWallet } = data
-    localStorage.setItem('cv_token', newToken)
-    setToken(newToken)
-    setUser(newUser)
-    setWallet(newWallet)
-    toast.success('Account created! Please verify your email.')
-    return data
+    try {
+      const data = await api.post('/auth/register', formData)
+      console.log('Register response:', data)
+      const newToken = data?.token
+      const newUser = data?.user
+      const newWallet = data?.wallet || { balance: 0, bonusBalance: 0, totalDeposited: 0 }
+
+      if (!newToken || !newUser) {
+        throw new Error('Invalid response from server')
+      }
+
+      localStorage.setItem('cv_token', newToken)
+      setToken(newToken)
+      setUser(newUser)
+      setWallet(newWallet)
+      toast.success('Account created! Welcome to ColorVerse 🎮')
+      return data
+    } catch (err) {
+      console.error('Register error:', err)
+      throw err
+    }
   }
 
   // ============================================================
   // Login
   // ============================================================
   const login = async (email, password) => {
-    const data = await api.post('/auth/login', { email, password })
-    const { token: newToken, user: newUser, wallet: newWallet } = data
-    localStorage.setItem('cv_token', newToken)
-    setToken(newToken)
-    setUser(newUser)
-    setWallet(newWallet)
-    toast.success(`Welcome back, ${newUser.username}! 🎮`)
-    return data
+    try {
+      const data = await api.post('/auth/login', { email, password })
+      console.log('Login response:', data)
+      const newToken = data?.token
+      const newUser = data?.user
+      const newWallet = data?.wallet || { balance: 0, bonusBalance: 0, totalDeposited: 0 }
+
+      if (!newToken || !newUser) {
+        throw new Error('Invalid response from server')
+      }
+
+      localStorage.setItem('cv_token', newToken)
+      setToken(newToken)
+      setUser(newUser)
+      setWallet(newWallet)
+      toast.success(`Welcome back, ${newUser.username}! 🎮`)
+      return data
+    } catch (err) {
+      console.error('Login error:', err)
+      throw err
+    }
   }
 
   // ============================================================
