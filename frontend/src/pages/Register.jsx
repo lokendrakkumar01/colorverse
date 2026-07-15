@@ -74,7 +74,13 @@ const Register = () => {
         referralCode: formData.referralCode,
       })
       clearTimeout(warmTimer)
-      navigate('/dashboard')
+      navigate('/login', {
+        state: {
+          autoLogin: true,
+          email: formData.email,
+          password: formData.password,
+        },
+      })
     } catch (err) {
       clearTimeout(warmTimer)
       toast.error(err.message || 'Registration failed. Please try again.')

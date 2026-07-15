@@ -49,20 +49,6 @@ export const AuthProvider = ({ children }) => {
   const register = async (formData) => {
     try {
       const data = await api.post('/auth/register', formData)
-      console.log('Register response:', data)
-      const newToken = data?.token
-      const newUser = data?.user
-      const newWallet = data?.wallet || { balance: 0, bonusBalance: 0, totalDeposited: 0 }
-
-      if (!newToken || !newUser) {
-        throw new Error('Invalid response from server')
-      }
-
-      localStorage.setItem('cv_token', newToken)
-      setToken(newToken)
-      setUser(newUser)
-      setWallet(newWallet)
-      toast.success('Account created! Welcome to ColorVerse 🎮')
       return data
     } catch (err) {
       console.error('Register error:', err)

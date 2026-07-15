@@ -1,8 +1,8 @@
 // ============================================================
 // Login Page - ColorVerse
 // ============================================================
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Eye, EyeOff, Mail, Lock, Zap, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -10,17 +10,47 @@ import toast from 'react-hot-toast'
 const Login = () => {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [warmingUp, setWarmingUp] = useState(false)
+  const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false)
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
+  // Handle auto-login transition from successful registration
+  useEffect(() => {
+    const state = location.state
+    if (state?.autoLogin && state?.email && state?.password) {
+      setFormData({ email: state.email, password: state.password })
+      setIsAutoLoggingIn(true)
+
+      const performAutoLogin = async () => {
+        setLoading(true)
+        try {
+          await login(state.email, state.password)
+          toast.success('Registration successful! Welcome to your dashboard.')
+          navigate('/dashboard')
+        } catch (err) {
+          toast.error(err.message || 'Auto-login failed. Please sign in manually.')
+          setIsAutoLoggingIn(false)
+        } finally {
+          setLoading(false)
+        }
+      }
+
+      // Small timeout to allow visual transition effect
+      const timer = setTimeout(performAutoLogin, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [location, navigate, login])
+
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    if (e) e.preventDefault()
     if (!formData.email || !formData.password) {
       return toast.error('Please fill in all fields')
     }
@@ -107,89 +137,102 @@ const Login = () => {
 
           <div className="glass-card p-8 space-y-6">
             <div>
-              <h2 className="text-2xl font-display font-bold text-white">Welcome Back!</h2>
-              <p className="text-slate-400 mt-1 text-sm">Sign in to continue playing</p>
+              <h2 className="text-2xl font-display font-bold text-white">
+                {isAutoLoggingIn ? 'Creating Session...' : 'Welcome Back!'}
+              </h2>
+              <p className="text-slate-400 mt-1 text-sm font-medium">
+                {isAutoLoggingIn ? 'Logging you in automatically, please wait...' : 'Sign in to continue playing'}
+              </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email */}
-              <div className="space-y-1.5">
-                <label className="text-slate-300 text-sm font-medium">Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="your@email.com"
-                    className="input-field pl-10"
-                    required
-                    autoComplete="email"
-                  />
-                </div>
+            {isAutoLoggingIn ? (
+              <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                <div className="w-12 h-12 border-4 border-brand-600/30 border-t-brand-500 rounded-full animate-spin" />
+                <p className="text-xs text-brand-400 font-bold animate-pulse">Auto Authenticating...</p>
               </div>
-
-              {/* Password */}
-              <div className="space-y-1.5">
-                <label className="text-slate-300 text-sm font-medium">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                    className="input-field pl-10 pr-10"
-                    required
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Forgot Password */}
-              <div className="flex justify-end">
-                <Link to="/forgot-password" className="text-brand-400 text-sm hover:text-brand-300 transition">
-                  Forgot password?
-                </Link>
-              </div>
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full flex items-center justify-center gap-2 py-3.5"
-              >
-                {loading ? (
-                  <div className="flex flex-col items-center gap-1 w-full">
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    {warmingUp && (
-                      <span className="text-xs text-white/70">
-                        ⏳ Server warming up, please wait...
-                      </span>
-                    )}
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Email */}
+                <div className="space-y-1.5">
+                  <label className="text-slate-300 text-sm font-medium">Email Address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="your@email.com"
+                      className="input-field pl-10"
+                      required
+                      autoComplete="email"
+                    />
                   </div>
-                ) : (
-                  <>Sign In <ArrowRight className="w-4 h-4" /></>
-                )}
-              </button>
-            </form>
+                </div>
 
-            {/* Register Link */}
-            <p className="text-center text-slate-400 text-sm">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-brand-400 hover:text-brand-300 font-medium transition">
-                Create Account
-              </Link>
-            </p>
+                {/* Password */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-slate-300 text-sm font-medium">Password</label>
+                    <Link to="/forgot-password" className="text-xs text-brand-400 hover:text-brand-300 font-semibold">
+                      Forgot?
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="••••••••"
+                      className="input-field pl-10 pr-10"
+                      required
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Submit button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full btn-primary flex items-center justify-center gap-2 py-3.5 mt-2"
+                >
+                  {loading ? (
+                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      Login <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+
+                {warmingUp && (
+                  <p className="text-xxs text-amber-400 text-center animate-pulse font-semibold mt-2">
+                    ⏳ Backend server warming up (Render cold start)... Please wait.
+                  </p>
+                )}
+              </form>
+            )}
+
+            {!isAutoLoggingIn && (
+              <div className="text-center pt-2">
+                <p className="text-slate-400 text-xs font-semibold">
+                  Don't have an account?{' '}
+                  <Link to="/register" className="text-brand-400 hover:text-brand-300">
+                    Register Now
+                  </Link>
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
