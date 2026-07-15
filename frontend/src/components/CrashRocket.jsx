@@ -1,11 +1,11 @@
 // ============================================================
-// Crash Rocket Game Component - Winzo Style
+// Crash Rocket Game Component - Winzo Style with Free Practice Play
 // ============================================================
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import api from '../services/api'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Coins, Rocket, Play, ShieldAlert, Award } from 'lucide-react'
+import { ArrowLeft, Coins, Rocket, Play, ShieldAlert, Award, Sparkles, RefreshCw } from 'lucide-react'
 
 const QUICK_AMOUNTS = [10, 50, 100, 500, 1000]
 
@@ -19,6 +19,17 @@ const CrashRocket = ({ onBack }) => {
   const timerRef = useRef(null)
   const currentMultRef = useRef(1.00)
 
+  // Free Practice Play (Demo Mode)
+  const [isDemoMode, setIsDemoMode] = useState(false)
+  const [demoBalance, setDemoBalance] = useState(() => {
+    const saved = localStorage.getItem('cv_demo_balance')
+    return saved ? Number(saved) : 10000
+  })
+
+  useEffect(() => {
+    localStorage.setItem('cv_demo_balance', demoBalance)
+  }, [demoBalance])
+
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
@@ -27,9 +38,11 @@ const CrashRocket = ({ onBack }) => {
 
   const startCrashGame = () => {
     if (betAmount < 10) return toast.error('Minimum bet is ₹10')
-    if (betAmount > (wallet?.balance || 0)) return toast.error('Insufficient wallet balance')
+    
+    const currentBalance = isDemoMode ? demoBalance : (wallet?.balance || 0)
+    if (betAmount > currentBalance) return toast.error('Insufficient wallet balance')
 
-    // Determine target crash point using weighted probabilities (most games crash early, some go high)
+    // Determine target crash point using weighted probabilities
     const rand = Math.random()
     let targetCrash = 1.00
     if (rand < 0.20) {
@@ -60,6 +73,9 @@ const CrashRocket = ({ onBack }) => {
         clearInterval(timerRef.current)
         setMultiplier(targetCrash)
         setGameState('crashed')
+        if (isDemoMode) {
+          setDemoBalance(prev => prev - betAmount)
+        }
         toast.error(`💥 Rocket Crashed at ${targetCrash.toFixed(2)}x!`)
       } else {
         setMultiplier(nextMult)
@@ -69,6 +85,8 @@ const CrashRocket = ({ onBack }) => {
   }
 
   const debitBetAmount = async () => {
+    if (isDemoMode) return; // skip for demo play
+
     try {
       const data = await api.post('/game/instant-game', {
         gameType: 'crash',
@@ -91,6 +109,13 @@ const CrashRocket = ({ onBack }) => {
     const finalMult = currentMultRef.current
     const winAmount = Math.round(betAmount * finalMult)
 
+    if (isDemoMode) {
+      setGameState('cashed_out')
+      setDemoBalance(prev => prev + (winAmount - betAmount)) // net gains
+      toast.success(`🚀 Demo Cashout! Won 🪙₹${winAmount} at ${finalMult}x!`)
+      return
+    }
+
     try {
       setGameState('cashed_out')
       // Update wallet and record result
@@ -103,7 +128,6 @@ const CrashRocket = ({ onBack }) => {
       })
 
       // Refund the initial bet + credit the full win amount
-      // Our instant endpoint debits the bet first, so if we win we get winAmount
       updateWallet({ balance: data.walletBalance })
       toast.success(`🚀 Cashed Out! Won ₹${winAmount} at ${finalMult}x!`, { duration: 5000 })
     } catch (err) {
@@ -111,19 +135,67 @@ const CrashRocket = ({ onBack }) => {
     }
   }
 
+  const handleRefillDemo = () => {
+    setDemoBalance(10000)
+    toast.success('Demo Balance reset to 🪙₹10,000 for practice!')
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <button onClick={onBack} className="btn-secondary flex items-center gap-2 px-3 py-1.5 text-sm">
           <ArrowLeft className="w-4 h-4" /> Back to Arena
         </button>
-        <div className="flex items-center gap-2">
-          <Coins className="w-5 h-5 text-yellow-400" />
-          <span className="text-slate-400 text-sm">Balance:</span>
-          <span className="text-white font-black font-mono">₹{wallet?.balance?.toFixed(2) || '0.00'}</span>
+
+        {/* Play style toggler */}
+        <div className="flex items-center gap-2 bg-dark-800 p-1.5 rounded-xl border border-white/5">
+          <button
+            onClick={() => { if(gameState !== 'running') setIsDemoMode(false) }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${!isDemoMode ? 'bg-brand-600 text-white shadow-glow-sm' : 'text-slate-400 hover:text-white'}`}
+            disabled={gameState === 'running'}
+          >
+            ₹ Real Play
+          </button>
+          <button
+            onClick={() => { if(gameState !== 'running') setIsDemoMode(true) }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${isDemoMode ? 'bg-emerald-600 text-white shadow-glow-emerald' : 'text-slate-400 hover:text-white'}`}
+            disabled={gameState === 'running'}
+          >
+            🟢 Practice Free
+          </button>
+        </div>
+
+        <div className="flex items-center gap-4">
+          {isDemoMode ? (
+            <div className="flex items-center gap-2 bg-emerald-950/30 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
+              <Coins className="w-4 h-4 text-emerald-400" />
+              <span className="text-slate-300 text-xs">Demo Coins:</span>
+              <span className="text-emerald-400 font-black font-mono">₹{demoBalance.toFixed(2)}</span>
+              {demoBalance < 100 && (
+                <button onClick={handleRefillDemo} title="Refill Demo Balance" className="ml-1 text-slate-400 hover:text-white transition">
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 bg-brand-950/20 border border-brand-700/20 px-3 py-1.5 rounded-xl">
+              <Coins className="w-4 h-4 text-yellow-400" />
+              <span className="text-slate-300 text-xs">Real Cash:</span>
+              <span className="text-white font-black font-mono">₹{wallet?.balance?.toFixed(2) || '0.00'}</span>
+            </div>
+          )}
         </div>
       </div>
+
+      {isDemoMode && (
+        <div className="bg-emerald-500/10 border border-emerald-500/25 px-4 py-3 rounded-2xl flex items-center gap-3 animate-fade-in">
+          <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse flex-shrink-0" />
+          <p className="text-xs text-emerald-300 leading-relaxed">
+            You are playing in <strong>Free Practice Mode</strong>. Bids will use virtual demo coins and won't affect your real wallet balance. Practice as much as you like!
+          </p>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Left Side Controls */}
@@ -131,7 +203,7 @@ const CrashRocket = ({ onBack }) => {
           <div className="space-y-4">
             <div>
               <h2 className="text-2xl font-display font-black text-white flex items-center gap-2">
-                🚀 Crash Rocket
+                🚀 Crash Rocket {isDemoMode && <span className="text-xxs bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-sans uppercase font-black">Free Demo</span>}
               </h2>
               <p className="text-slate-400 text-sm mt-1">Watch the multiplier climb. Cash out before the rocket crashes to win up to 100x!</p>
             </div>
@@ -155,7 +227,7 @@ const CrashRocket = ({ onBack }) => {
                     onClick={() => setBetAmount(amt)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition
                       ${betAmount === amt
-                        ? 'bg-brand-600 text-white'
+                        ? isDemoMode ? 'bg-emerald-600 text-white' : 'bg-brand-600 text-white'
                         : 'bg-dark-500 hover:bg-dark-400 text-slate-300'
                       }`}
                   >
@@ -166,94 +238,100 @@ const CrashRocket = ({ onBack }) => {
             </div>
           </div>
 
-          {/* Action Button */}
-          <div>
+          {/* CTA Buttons */}
+          <div className="pt-4">
             {gameState === 'running' ? (
               <button
                 onClick={handleCashout}
-                className="w-full py-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-display font-black text-xl shadow-glow-emerald animate-pulse flex flex-col items-center justify-center"
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500
+                  hover:from-amber-600 hover:to-yellow-600 text-dark-900 font-display font-black text-xl
+                  shadow-glow-gold hover:shadow-glow-gold-lg animate-pulse"
               >
-                <span>CASH OUT NOW</span>
-                <span className="text-sm font-medium mt-0.5 opacity-90">
-                  Receive ₹{Math.round(betAmount * multiplier)} ({multiplier}x)
-                </span>
+                CASH OUT AT {multiplier.toFixed(2)}x (Payout: {isDemoMode ? '🪙' : ''}₹{Math.round(betAmount * multiplier)})
               </button>
             ) : (
               <button
                 onClick={startCrashGame}
                 disabled={gameState === 'running'}
-                className="w-full py-5 rounded-xl btn-primary shadow-glow hover:shadow-glow-lg animate-glow font-display font-black text-lg flex items-center justify-center gap-2"
+                className={`w-full py-4 rounded-xl font-display font-black text-lg flex items-center justify-center gap-2 transition-all
+                  ${isDemoMode 
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-glow-emerald hover:shadow-glow-emerald-lg active:scale-95' 
+                    : 'btn-primary shadow-glow hover:shadow-glow-lg animate-glow'
+                  }`}
               >
                 <Play className="w-5 h-5 fill-current" />
-                Launch Rocket (₹{betAmount})
+                Start Rocket & Bet {isDemoMode ? '🪙' : ''}₹{betAmount}
               </button>
             )}
           </div>
         </div>
 
-        {/* Right Side Visualizer */}
-        <div className="glass-card p-6 flex flex-col items-center justify-center min-h-[350px] relative overflow-hidden bg-dark-900/60 border border-slate-800">
-          {/* Ambient space background grid */}
-          <div className="absolute inset-0 bg-grid opacity-10" />
-
-          {/* Stars animation when running */}
-          {gameState === 'running' && (
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute w-2 h-2 bg-white/40 rounded-full top-10 left-10 animate-ping" />
-              <div className="absolute w-1.5 h-1.5 bg-white/30 rounded-full top-1/2 left-2/3 animate-ping" style={{ animationDelay: '1s' }} />
-              <div className="absolute w-1 h-1 bg-white/20 rounded-full top-1/4 left-3/4 animate-ping" style={{ animationDelay: '0.5s' }} />
-            </div>
-          )}
-
-          {/* Glowing ring */}
-          <div className={`absolute w-64 h-64 rounded-full blur-3xl opacity-20 transition-all duration-300
-            ${gameState === 'crashed' ? 'bg-red-500' : gameState === 'cashed_out' ? 'bg-emerald-500' : 'bg-brand-600'}`}
+        {/* Right Side: Rocket Graph */}
+        <div className="glass-card p-6 flex flex-col items-center justify-center min-h-[350px] relative overflow-hidden bg-gradient-to-b from-dark-900 via-dark-800 to-dark-950">
+          {/* Ambient Glow */}
+          <div className={`absolute w-64 h-64 rounded-full blur-3xl opacity-20 transition-all duration-1000
+            ${gameState === 'running' ? 'bg-amber-500 scale-125' :
+              gameState === 'cashed_out' ? 'bg-emerald-500' :
+              gameState === 'crashed' ? 'bg-red-500' : isDemoMode ? 'bg-emerald-600' : 'bg-brand-600'}`}
           />
 
-          {/* Multiplier display */}
-          <div className="relative z-10 text-center space-y-4">
-            <div className="space-y-1">
-              <p className={`text-6xl font-black font-mono tracking-tight transition-colors duration-300
-                ${gameState === 'crashed' ? 'text-red-500' : gameState === 'cashed_out' ? 'text-emerald-400 font-bold' : 'text-brand-400'}`}>
+          {/* Floating Stars */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-transparent to-black/20" />
+
+          {/* Rocket and Multiplier */}
+          <div className="relative z-10 flex flex-col items-center space-y-8">
+            {/* Multiplier Text */}
+            <div className="text-center space-y-1">
+              <span className={`text-6xl font-display font-black font-mono tracking-tighter transition-colors duration-300
+                ${gameState === 'running' ? 'text-amber-400' :
+                  gameState === 'cashed_out' ? 'text-emerald-400' :
+                  gameState === 'crashed' ? 'text-red-500' : 'text-slate-500'}`}
+              >
                 {multiplier.toFixed(2)}x
-              </p>
-              <p className="text-slate-500 text-xs tracking-wider uppercase font-semibold">Current Multiplier</p>
+              </span>
+              <p className="text-slate-500 text-xxs font-bold uppercase tracking-widest mt-1">Current Multiplier</p>
             </div>
 
-            {/* Rocket animation */}
-            <div className="h-28 flex items-center justify-center relative">
+            {/* Rocket Icon Container */}
+            <div
+              className={`p-6 rounded-full bg-dark-700/80 border-2 transition-all duration-300
+                ${gameState === 'running' ? 'border-amber-400 animate-bounce scale-110 shadow-glow-gold' :
+                  gameState === 'cashed_out' ? 'border-emerald-400 shadow-glow-emerald' :
+                  gameState === 'crashed' ? 'border-red-500' : 'border-white/10'}`}
+              style={{
+                transform: gameState === 'running' ? `translateY(-${(multiplier - 1) * 8}px)` : 'none'
+              }}
+            >
+              <Rocket
+                className={`w-16 h-16 transition-transform duration-300
+                  ${gameState === 'running' ? 'text-amber-400 rotate-45 animate-pulse' :
+                    gameState === 'cashed_out' ? 'text-emerald-400 rotate-45' :
+                    gameState === 'crashed' ? 'text-red-500 rotate-180 translate-y-3' : 'text-slate-400'}`}
+              />
+            </div>
+
+            {/* Status updates */}
+            <div className="text-center min-h-[40px] px-4">
               {gameState === 'running' && (
-                <div className="animate-bounce">
-                  <Rocket className="w-16 h-16 text-brand-400 transform -rotate-45 drop-shadow-glow" />
-                  {/* Fire particles */}
-                  <div className="absolute -bottom-1 -left-1 w-6 h-6 bg-orange-500 rounded-full blur-sm animate-pulse" />
-                  <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-yellow-400 rounded-full blur-xs animate-ping" />
+                <p className="text-amber-400 text-xs font-semibold animate-pulse flex items-center justify-center gap-1.5">
+                  <Play className="w-3.5 h-3.5 fill-current animate-spin" /> Rocket is flying high...
+                </p>
+              )}
+              {gameState === 'cashed_out' && (
+                <div className="flex items-center justify-center gap-2 bg-emerald-500/10 border border-emerald-500/25 py-1 px-3 rounded-full text-emerald-400 text-xs font-bold">
+                  <Award className="w-4 h-4" />
+                  Successfully Cashed Out!
                 </div>
               )}
               {gameState === 'crashed' && (
-                <div className="text-center space-y-2">
-                  <span className="text-5xl">💥</span>
-                  <p className="text-red-500 font-bold text-sm flex items-center gap-1.5 justify-center">
-                    <ShieldAlert className="w-4 h-4" /> Busted! Crashed at {crashPoint.toFixed(2)}x
-                  </p>
-                </div>
-              )}
-              {gameState === 'cashed_out' && (
-                <div className="text-center space-y-2">
-                  <div className="w-14 h-14 bg-emerald-500/20 border border-emerald-500/40 rounded-full flex items-center justify-center mx-auto text-emerald-400">
-                    <Award className="w-7 h-7" />
-                  </div>
-                  <p className="text-emerald-400 font-bold text-sm">Successfully Cashed Out!</p>
+                <div className="flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/25 py-1 px-3 rounded-full text-red-400 text-xs font-bold">
+                  <ShieldAlert className="w-4 h-4" />
+                  Rocket Crashed!
                 </div>
               )}
               {gameState === 'idle' && (
-                <Rocket className="w-16 h-16 text-slate-700 transform -rotate-45" />
+                <p className="text-slate-500 text-xs">Set your bid and launch the rocket to begin!</p>
               )}
-            </div>
-
-            <div className="text-xs text-slate-500 font-medium">
-              {gameState === 'running' && 'Cash out before the rocket crashes!'}
-              {gameState === 'idle' && 'Place your bet and launch to start.'}
             </div>
           </div>
         </div>

@@ -1,11 +1,11 @@
 // ============================================================
-// Coin Flip Game Component - Winzo Style
+// Coin Flip Game Component - Winzo Style with Free Practice Play
 // ============================================================
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import api from '../services/api'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Coins, Play } from 'lucide-react'
+import { ArrowLeft, Coins, Play, Sparkles, RefreshCw } from 'lucide-react'
 
 const QUICK_AMOUNTS = [10, 50, 100, 500, 1000]
 
@@ -16,11 +16,24 @@ const CoinFlip = ({ onBack }) => {
   const [flipping, setFlipping] = useState(false)
   const [flipResult, setFlipResult] = useState('heads')
   const [winStatus, setWinStatus] = useState(null) // 'win', 'lose', null
+  
+  // Free Practice Play (Demo Mode)
+  const [isDemoMode, setIsDemoMode] = useState(false)
+  const [demoBalance, setDemoBalance] = useState(() => {
+    const saved = localStorage.getItem('cv_demo_balance')
+    return saved ? Number(saved) : 10000
+  })
+
+  useEffect(() => {
+    localStorage.setItem('cv_demo_balance', demoBalance)
+  }, [demoBalance])
 
   const handlePlaceBet = async () => {
     if (!selectedSide) return toast.error('Please select Heads or Tails first!')
     if (betAmount < 10) return toast.error('Minimum bet is ₹10')
-    if (betAmount > (wallet?.balance || 0)) return toast.error('Insufficient wallet balance')
+
+    const currentBalance = isDemoMode ? demoBalance : (wallet?.balance || 0)
+    if (betAmount > currentBalance) return toast.error('Insufficient wallet balance')
 
     try {
       setFlipping(true)
@@ -50,6 +63,20 @@ const CoinFlip = ({ onBack }) => {
   }
 
   const resolveGame = async (isWin, winAmount, finalResult) => {
+    if (isDemoMode) {
+      if (isWin) {
+        setDemoBalance(prev => prev + betAmount)
+        setWinStatus('win')
+        toast.success(`🎉 Demo Win! Predicted correctly. Won 🪙₹${winAmount}!`)
+      } else {
+        setDemoBalance(prev => prev - betAmount)
+        setWinStatus('lose')
+        toast.error(`It was ${finalResult.toUpperCase()}. Try again!`)
+      }
+      setFlipping(false)
+      return
+    }
+
     try {
       const data = await api.post('/game/instant-game', {
         gameType: 'coin',
@@ -74,26 +101,74 @@ const CoinFlip = ({ onBack }) => {
     }
   }
 
+  const handleRefillDemo = () => {
+    setDemoBalance(10000)
+    toast.success('Demo Balance reset to 🪙₹10,000 for practice!')
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <button onClick={onBack} className="btn-secondary flex items-center gap-2 px-3 py-1.5 text-sm">
           <ArrowLeft className="w-4 h-4" /> Back to Arena
         </button>
-        <div className="flex items-center gap-2">
-          <Coins className="w-5 h-5 text-yellow-400" />
-          <span className="text-slate-400 text-sm">Balance:</span>
-          <span className="text-white font-black font-mono">₹{wallet?.balance?.toFixed(2) || '0.00'}</span>
+
+        {/* Play style toggler */}
+        <div className="flex items-center gap-2 bg-dark-800 p-1.5 rounded-xl border border-white/5">
+          <button
+            onClick={() => { if(!flipping) setIsDemoMode(false) }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${!isDemoMode ? 'bg-brand-600 text-white shadow-glow-sm' : 'text-slate-400 hover:text-white'}`}
+            disabled={flipping}
+          >
+            ₹ Real Play
+          </button>
+          <button
+            onClick={() => { if(!flipping) setIsDemoMode(true) }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${isDemoMode ? 'bg-emerald-600 text-white shadow-glow-emerald' : 'text-slate-400 hover:text-white'}`}
+            disabled={flipping}
+          >
+            🟢 Practice Free
+          </button>
+        </div>
+
+        <div className="flex items-center gap-4">
+          {isDemoMode ? (
+            <div className="flex items-center gap-2 bg-emerald-950/30 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
+              <Coins className="w-4 h-4 text-emerald-400" />
+              <span className="text-slate-300 text-xs">Demo Coins:</span>
+              <span className="text-emerald-400 font-black font-mono">₹{demoBalance.toFixed(2)}</span>
+              {demoBalance < 100 && (
+                <button onClick={handleRefillDemo} title="Refill Demo Balance" className="ml-1 text-slate-400 hover:text-white transition">
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 bg-brand-950/20 border border-brand-700/20 px-3 py-1.5 rounded-xl">
+              <Coins className="w-4 h-4 text-yellow-400" />
+              <span className="text-slate-300 text-xs">Real Cash:</span>
+              <span className="text-white font-black font-mono">₹{wallet?.balance?.toFixed(2) || '0.00'}</span>
+            </div>
+          )}
         </div>
       </div>
+
+      {isDemoMode && (
+        <div className="bg-emerald-500/10 border border-emerald-500/25 px-4 py-3 rounded-2xl flex items-center gap-3 animate-fade-in">
+          <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse flex-shrink-0" />
+          <p className="text-xs text-emerald-300 leading-relaxed">
+            You are playing in <strong>Free Practice Mode</strong>. Bids will use virtual demo coins and won't affect your real wallet balance. Practice as much as you like!
+          </p>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Left Side: Controls */}
         <div className="glass-card p-6 space-y-6">
           <div>
             <h2 className="text-2xl font-display font-black text-white flex items-center gap-2">
-              🪙 Coin Flip 2X
+              🪙 Coin Flip 2X {isDemoMode && <span className="text-xxs bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-sans uppercase font-black">Free Demo</span>}
             </h2>
             <p className="text-slate-400 text-sm mt-1">Predict heads or tails. Get double (2x) payout on win!</p>
           </div>
@@ -109,7 +184,9 @@ const CoinFlip = ({ onBack }) => {
                   onClick={() => setSelectedSide(side)}
                   className={`py-4 rounded-xl border-2 font-display font-bold text-lg capitalize transition-all
                     ${selectedSide === side
-                      ? 'bg-brand-600/40 border-brand-400 text-white shadow-glow-sm'
+                      ? isDemoMode 
+                        ? 'bg-emerald-600/30 border-emerald-500 text-white shadow-glow-emerald' 
+                        : 'bg-brand-600/40 border-brand-400 text-white shadow-glow-sm'
                       : 'bg-dark-500/80 border-white/10 text-slate-300 hover:border-brand-500/30'
                     }`}
                 >
@@ -138,7 +215,7 @@ const CoinFlip = ({ onBack }) => {
                   onClick={() => setBetAmount(amt)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition
                     ${betAmount === amt
-                      ? 'bg-brand-600 text-white'
+                      ? isDemoMode ? 'bg-emerald-600 text-white' : 'bg-brand-600 text-white'
                       : 'bg-dark-500 hover:bg-dark-400 text-slate-300'
                     }`}
                 >
@@ -154,7 +231,9 @@ const CoinFlip = ({ onBack }) => {
             disabled={flipping || !selectedSide}
             className={`w-full py-4 rounded-xl font-display font-black text-lg flex items-center justify-center gap-2 transition-all
               ${selectedSide && !flipping
-                ? 'btn-primary shadow-glow hover:shadow-glow-lg animate-glow'
+                ? isDemoMode 
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-glow-emerald hover:shadow-glow-emerald-lg active:scale-95' 
+                  : 'btn-primary shadow-glow hover:shadow-glow-lg animate-glow'
                 : 'bg-dark-500 text-slate-500 cursor-not-allowed'
               }`}
           >
@@ -163,7 +242,7 @@ const CoinFlip = ({ onBack }) => {
             ) : (
               <>
                 <Play className="w-5 h-5 fill-current" />
-                {selectedSide ? `Flip & Bet ₹${betAmount}` : 'Select Heads or Tails'}
+                {selectedSide ? `Flip & Bet ${isDemoMode ? '🪙' : ''}₹${betAmount}` : 'Select Heads or Tails'}
               </>
             )}
           </button>
@@ -172,7 +251,7 @@ const CoinFlip = ({ onBack }) => {
         {/* Right Side: Coin flip visualizer */}
         <div className="glass-card p-6 flex flex-col items-center justify-center space-y-6 min-h-[350px] relative overflow-hidden">
           <div className={`absolute w-48 h-48 rounded-full blur-3xl opacity-30 transition-colors duration-500
-            ${winStatus === 'win' ? 'bg-emerald-500' : winStatus === 'lose' ? 'bg-red-500' : 'bg-brand-600'}`}
+            ${winStatus === 'win' ? 'bg-emerald-500' : winStatus === 'lose' ? 'bg-red-500' : isDemoMode ? 'bg-emerald-600' : 'bg-brand-600'}`}
           />
 
           {/* Spinning Coin */}
