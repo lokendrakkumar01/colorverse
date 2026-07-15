@@ -299,8 +299,10 @@ const approveDeposit = async (req, res, next) => {
       description: `Deposit approved by admin`,
     });
 
-    // Send email and notification
-    await sendDepositConfirmedEmail(deposit.user, deposit.amount, deposit._id.toString());
+    // Send email asynchronously (don't block HTTP response)
+    sendDepositConfirmedEmail(deposit.user, deposit.amount, deposit._id.toString()).catch((emailErr) => {
+      console.error("Admin deposit approval email failed (async):", emailErr.message);
+    });
     await Notification.create({
       user: deposit.user._id,
       title: "Deposit Approved ✅",
@@ -378,12 +380,14 @@ const approveWithdrawal = async (req, res, next) => {
       { status: "completed" }
     );
 
-    // Send email and notification
-    await sendWithdrawalApprovedEmail(
+    // Send email asynchronously (don't block HTTP response)
+    sendWithdrawalApprovedEmail(
       withdrawal.user,
       withdrawal.amount,
       transactionReference || withdrawal._id.toString()
-    );
+    ).catch((emailErr) => {
+      console.error("Admin withdrawal approval email failed (async):", emailErr.message);
+    });
     await Notification.create({
       user: withdrawal.user._id,
       title: "Withdrawal Approved ✅",
@@ -430,8 +434,10 @@ const rejectWithdrawal = async (req, res, next) => {
       { status: "failed" }
     );
 
-    // Send email and notification
-    await sendWithdrawalRejectedEmail(withdrawal.user, withdrawal.amount, reason);
+    // Send email asynchronously (don't block HTTP response)
+    sendWithdrawalRejectedEmail(withdrawal.user, withdrawal.amount, reason).catch((emailErr) => {
+      console.error("Admin withdrawal rejection email failed (async):", emailErr.message);
+    });
     await Notification.create({
       user: withdrawal.user._id,
       title: "Withdrawal Rejected ❌",

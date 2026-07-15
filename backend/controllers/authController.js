@@ -64,13 +64,11 @@ const register = async (req, res, next) => {
     const verificationToken = user.generateEmailVerificationToken();
     await user.save();
 
-    // Send verification email (don't block registration if email fails)
-    try {
-      const verificationUrl = `${process.env.CLIENT_URL}/verify-email/${verificationToken}`;
-      await sendVerificationEmail(user, verificationUrl);
-    } catch (emailErr) {
-      console.error("Email send failed:", emailErr.message);
-    }
+    // Send verification email asynchronously (don't block HTTP response)
+    const verificationUrl = `${process.env.CLIENT_URL}/verify-email/${verificationToken}`;
+    sendVerificationEmail(user, verificationUrl).catch((emailErr) => {
+      console.error("Email send failed (async):", emailErr.message);
+    });
 
     // Create welcome notification
     await Notification.create({
@@ -212,12 +210,10 @@ const verifyEmail = async (req, res, next) => {
     user.emailVerificationExpires = undefined;
     await user.save();
 
-    // Send welcome email (don't block if it fails)
-    try {
-      await sendWelcomeEmail(user);
-    } catch (e) {
-      console.error("Welcome email failed:", e.message);
-    }
+    // Send welcome email asynchronously (don't block HTTP response)
+    sendWelcomeEmail(user).catch((e) => {
+      console.error("Welcome email failed (async):", e.message);
+    });
 
     // Check for referral bonus
     const referral = await Referral.findOne({ referee: user._id });
@@ -264,12 +260,11 @@ const forgotPassword = async (req, res, next) => {
     const resetToken = user.generatePasswordResetToken();
     await user.save();
 
-    try {
-      const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
-      await sendPasswordResetEmail(user, resetUrl);
-    } catch (emailErr) {
-      console.error("Password reset email failed:", emailErr.message);
-    }
+    // Send reset email asynchronously (don't block HTTP response)
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+    sendPasswordResetEmail(user, resetUrl).catch((emailErr) => {
+      console.error("Password reset email failed (async):", emailErr.message);
+    });
 
     res.json({
       success: true,
@@ -384,7 +379,9 @@ const resendVerification = async (req, res, next) => {
     await user.save();
 
     const verificationUrl = `${process.env.CLIENT_URL}/verify-email/${verificationToken}`;
-    await sendVerificationEmail(user, verificationUrl);
+    sendVerificationEmail(user, verificationUrl).catch((emailErr) => {
+      console.error("Resend verification email failed (async):", emailErr.message);
+    });
 
     res.json({ success: true, message: "Verification email resent" });
   } catch (error) {

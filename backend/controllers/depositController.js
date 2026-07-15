@@ -153,8 +153,10 @@ const verifyPayment = async (req, res, next) => {
       }
     }
 
-    // Send confirmation email
-    await sendDepositConfirmedEmail(req.user, deposit.amount, razorpay_payment_id);
+    // Send confirmation email asynchronously (don't block HTTP response)
+    sendDepositConfirmedEmail(req.user, deposit.amount, razorpay_payment_id).catch((emailErr) => {
+      console.error("Deposit confirmation email failed (async):", emailErr.message);
+    });
 
     // Create notification
     await Notification.create({
