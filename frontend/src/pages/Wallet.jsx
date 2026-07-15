@@ -14,7 +14,7 @@ import {
 const TABS = ['Overview', 'Deposit', 'Withdraw', 'History']
 
 const Wallet = () => {
-  const { wallet, refreshUser } = useAuth()
+  const { user, wallet, refreshUser } = useAuth()
   const [tab, setTab] = useState('Overview')
   const [transactions, setTransactions] = useState([])
   const [deposits, setDeposits] = useState([])
@@ -85,7 +85,11 @@ const Wallet = () => {
             toast.error('Payment verification failed')
           }
         },
-        prefill: { email: 'user@example.com' },
+        prefill: {
+          name: user?.username || '',
+          email: user?.email || '',
+          contact: user?.phone || '',
+        },
         theme: { color: '#7c3aed' },
         modal: { ondismiss: () => toast.error('Payment cancelled') },
       }
