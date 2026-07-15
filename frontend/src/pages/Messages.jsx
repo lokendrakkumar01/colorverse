@@ -214,15 +214,17 @@ const Messages = () => {
               {messages.map(msg => {
                 const isMe = msg.sender === user?.username
                 return (
-                  <div key={msg.id} className={`flex gap-2.5 ${isMe ? 'flex-row-reverse' : ''}`}>
-                    <div className="w-8 h-8 rounded-full bg-brand-600/30 border border-brand-600/40 flex items-center justify-center text-brand-300 font-bold text-xs flex-shrink-0">
-                      {msg.sender?.[0]?.toUpperCase()}
-                    </div>
+                  <div key={msg.id} className={`flex gap-2.5 w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
+                    {!isMe && (
+                      <div className="w-8 h-8 rounded-full bg-brand-600/30 border border-brand-600/40 flex items-center justify-center text-brand-300 font-bold text-xs flex-shrink-0">
+                        {msg.sender?.[0]?.toUpperCase()}
+                      </div>
+                    )}
                     <div className="max-w-[65%] space-y-1">
-                      <div className={`flex items-center gap-1.5 ${isMe ? 'justify-end' : ''}`}>
+                      <div className={`flex items-center gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
                         <span className="text-xxs font-bold text-slate-400">{msg.sender}</span>
                       </div>
-                      <div className={`p-3 rounded-2xl text-xs leading-relaxed break-words space-y-2
+                      <div dir="ltr" className={`p-3 rounded-2xl text-xs leading-relaxed break-words text-left space-y-2
                         ${isMe
                           ? 'bg-brand-600 text-white rounded-tr-none'
                           : 'bg-dark-500 text-slate-200 rounded-tl-none border border-white/5'
@@ -238,6 +240,11 @@ const Messages = () => {
                         {msg.text && <p>{msg.text}</p>}
                       </div>
                     </div>
+                    {isMe && (
+                      <div className="w-8 h-8 rounded-full bg-brand-600/30 border border-brand-600/40 flex items-center justify-center text-brand-300 font-bold text-xs flex-shrink-0">
+                        {msg.sender?.[0]?.toUpperCase()}
+                      </div>
+                    )}
                   </div>
                 )
               })}

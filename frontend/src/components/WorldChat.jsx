@@ -82,19 +82,19 @@ const WorldChat = ({ isOpen, onClose }) => {
         {messages.map((msg) => {
           const isMe = msg.username === user?.username
           return (
-            <div key={msg.id} className={`flex gap-2.5 ${isMe ? 'flex-row-reverse' : ''}`}>
-              {/* Initials Avatar */}
-              <div className="w-8 h-8 rounded-full bg-brand-600/30 border border-brand-600/40 flex items-center justify-center text-brand-300 font-bold text-xs flex-shrink-0">
-                {msg.username?.[0]?.toUpperCase()}
-              </div>
+            <div key={msg.id} className={`flex gap-2.5 w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
+              {!isMe && (
+                <div className="w-8 h-8 rounded-full bg-brand-600/30 border border-brand-600/40 flex items-center justify-center text-brand-300 font-bold text-xs flex-shrink-0">
+                  {msg.username?.[0]?.toUpperCase()}
+                </div>
+              )}
 
-              {/* Message Bubble */}
-              <div className={`max-w-[70%] space-y-1`}>
-                <div className={`flex items-center gap-1.5 ${isMe ? 'justify-end' : ''}`}>
+              <div className="max-w-[70%] space-y-1">
+                <div className={`flex items-center gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
                   <span className="text-xxs font-bold text-slate-400 truncate">{msg.username}</span>
                   {msg.username === 'admin' && <Shield className="w-3 h-3 text-red-400" />}
                 </div>
-                <div className={`p-3 rounded-2xl text-xs leading-relaxed break-words
+                <div dir="ltr" className={`p-3 rounded-2xl text-xs leading-relaxed break-words text-left
                   ${isMe
                     ? 'bg-brand-600 text-white rounded-tr-none'
                     : 'bg-dark-500 text-slate-200 rounded-tl-none border border-white/5'
@@ -103,6 +103,12 @@ const WorldChat = ({ isOpen, onClose }) => {
                   {msg.text}
                 </div>
               </div>
+
+              {isMe && (
+                <div className="w-8 h-8 rounded-full bg-brand-600/30 border border-brand-600/40 flex items-center justify-center text-brand-300 font-bold text-xs flex-shrink-0">
+                  {msg.username?.[0]?.toUpperCase()}
+                </div>
+              )}
             </div>
           )
         })}

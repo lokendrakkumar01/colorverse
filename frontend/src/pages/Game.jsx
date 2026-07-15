@@ -8,7 +8,7 @@ import api from '../services/api'
 import toast from 'react-hot-toast'
 import {
   Gamepad2, Trophy, Clock, Users, TrendingUp, AlertCircle,
-  CheckCircle, X, Minus, Plus, Search, Star, Zap, Play
+  CheckCircle, X, Minus, Plus, Search, Star, Zap, Play, ArrowLeft
 } from 'lucide-react'
 
 // Game components
